@@ -118,55 +118,60 @@ int toNum( char * pStr )
    }
 }
 
-int readAndParse( FILE * pInfile, char * pLine, char ** pLabel, char
-    ** pOpcode, char ** pArg1, char ** pArg2, char ** pArg3, char ** pArg4
-    )
-{
-   char * lRet, * lPtr;
-   int i;
-   if( !fgets( pLine, MAX_LINE_LENGTH, pInfile ) )
+int readAndParse(FILE * pInfile, char * pLine, char ** pLabel, char ** pOpcode, char ** pArg1, char ** pArg2, char ** pArg3, char ** pArg4){
+  char * lRet, * lPtr;
+  int i;
+  if( !fgets( pLine, MAX_LINE_LENGTH, pInfile ) ){
     return( DONE );
-   for( i = 0; i < strlen( pLine ); i++ )
+  }
+
+  for( i = 0; i < strlen( pLine ); i++ ){
     pLine[i] = tolower( pLine[i] );
-   
-       /* convert entire line to lowercase */
-   *pLabel = *pOpcode = *pArg1 = *pArg2 = *pArg3 = *pArg4 = pLine + strlen(pLine);
+  }
+  /* convert entire line to lowercase */
+  
+  *pLabel = *pOpcode = *pArg1 = *pArg2 = *pArg3 = *pArg4 = pLine + strlen(pLine);
 
-   /* ignore the comments */
-   lPtr = pLine;
-
-   while( *lPtr != ';' && *lPtr != '\0' &&
-   *lPtr != '\n' ) 
+  /* ignore the comments */
+  lPtr = pLine;
+  while( *lPtr != ';' && *lPtr != '\0' && *lPtr != '\n' ){
     lPtr++;
+  }
 
-   *lPtr = '\0';
-   if( !(lPtr = strtok( pLine, "\t\n ," ) ) ) 
+  *lPtr = '\0';
+  if( !(lPtr = strtok( pLine, "\t\n ," ) ) ) { /*returns !NULL if EMPTY_LINE*/
     return( EMPTY_LINE );
+  }
 
-   if( isOpcode( lPtr ) == -1 && lPtr[0] != '.' ) /* found a label */
-   {
+  if( isOpcode( lPtr ) == -1 && lPtr[0] != '.' ){ /* found a label */
     *pLabel = lPtr;
-    if( !( lPtr = strtok( NULL, "\t\n ," ) ) ) return( OK );
-   }
-   
-       *pOpcode = lPtr;
+    if( !( lPtr = strtok( NULL, "\t\n ," ) ) ){
+      return( OK );
+    }
+  }
 
-   if( !( lPtr = strtok( NULL, "\t\n ," ) ) ) return( OK );
-   
-       *pArg1 = lPtr;
-   
-       if( !( lPtr = strtok( NULL, "\t\n ," ) ) ) return( OK );
+  *pOpcode = lPtr;
+  if( !( lPtr = strtok( NULL, "\t\n ," ) ) ){
+    return( OK );
+  }
 
-   *pArg2 = lPtr;
-   if( !( lPtr = strtok( NULL, "\t\n ," ) ) ) return( OK );
+  *pArg1 = lPtr;
+  if( !( lPtr = strtok( NULL, "\t\n ," ) ) ){
+    return( OK );
+  }
 
-   *pArg3 = lPtr;
+  *pArg2 = lPtr;
+  if( !( lPtr = strtok( NULL, "\t\n ," ) ) ){
+    return( OK );
+  }
 
-   if( !( lPtr = strtok( NULL, "\t\n ," ) ) ) return( OK );
+  *pArg3 = lPtr;
+  if( !( lPtr = strtok( NULL, "\t\n ," ) ) ){
+    return( OK );
+  }
 
-   *pArg4 = lPtr;
-
-   return( OK );
+  *pArg4 = lPtr;
+  return( OK );
 }
 
     /* Note: MAX_LINE_LENGTH, OK, EMPTY_LINE, and DONE are defined values */
@@ -174,30 +179,58 @@ int readAndParse( FILE * pInfile, char * pLine, char ** pLabel, char
 int main(int argc, char* argv[]) {
 
 	/* open the source file */
-     infile = fopen(argv[1], "r");
-     outfile = fopen(argv[2], "w");
-         
-     if (!infile) {
-       printf("Error: Cannot open file %s\n", argv[1]);
-       exit(4);
-         }
-     if (!outfile) {
-       printf("Error: Cannot open file %s\n", argv[2]);
-       exit(4);
+  infile = fopen(argv[1], "r");
+  outfile = fopen(argv[2], "w");
+     
+  if (!infile) {
+   printf("Error: Cannot open file %s\n", argv[1]);
+   exit(4);
      }
+  if (!outfile) {
+   printf("Error: Cannot open file %s\n", argv[2]);
+   exit(4);
+  }
 
      /* Do stuff with files */
+  struct Symbol symbol_table[10000];
+  int i;
+  for(i = 0; i < 10000; i++){
+    symbol_table[i].name = NULL;
+    symbol_table[i].memAddr = -1;
+  }
+  int symbol_counter = 0;
+  /*
+    Figure out how to manipulate array of structs, implement symbol table
+  */
 	char lLine[MAX_LINE_LENGTH + 1], *lLabel, *lOpcode, *lArg1, *lArg2, *lArg3, *lArg4;
 	int lRet;
 
 	do{
-		lRet = readAndParse( infile, lLine, &lLabel, &lOpcode, &lArg1, &lArg2, &lArg3, &lArg4 );
-		printf("running\n");
+		lRet = readAndParse(infile, lLine, &lLabel, &lOpcode, &lArg1, &lArg2, &lArg3, &lArg4);
+
 		if( lRet != DONE && lRet != EMPTY_LINE ){
+
+/*
+printf("parsed: %d\n", lRet);
+printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);
+*/
+printf("OUTSIDE: %s\n", lLabel);
 		    /*fprintf(outfile, "0x%.4X\n", 128 );*/
-		}
+      if(lLabel != NULL || *lLabel != '\n' || lLabel != "\0"){
+printf("ENTERED: %s\n", lLabel);
+fprintf(outfile, "%c\n", *lLabel);
+        symbol_table[symbol_counter].name = (char*)malloc(strlen(lLabel) * sizeof(char));
+        strcpy(symbol_table[symbol_counter].name, lLabel);
+        symbol_counter++;
+      }
+    }
 	} while( lRet != DONE );
 
+/*
+printf("%s\n", symbol_table[0].name);
+printf("%s\n", symbol_table[1].name);
+printf("%s\n", symbol_table[2].name);
+*/
 
      fclose(infile);
      fclose(outfile);
@@ -215,7 +248,14 @@ int main(int argc, char* argv[]) {
      printf("output file name = '%s'\n", oFileName);
 }
 
-int main1(int argc, char* argv[]){
-	char* str = "xora";
-	printf("%s result: %d\n", str ,isOpcode(str));
+int main1(int argc, char const *argv[])
+{
+  char str1[50] = "";
+  char str2[10] = "\0";
+  char str3[10] = "  ";
+  printf("%s\n", str1);
+  printf("%s\n", str2);
+  printf("%s\n", str3);
+
+  return 0;
 }
