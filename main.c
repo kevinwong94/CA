@@ -197,31 +197,43 @@ int main(int argc, char* argv[]) {
 	char lLine[MAX_LINE_LENGTH + 1], *lLabel, *lOpcode, *lArg1, *lArg2, *lArg3, *lArg4;
 	int lRet;
   int symbol_counter = 0;
+  int init_addr;
+  int PC;
 
 	do{
 		lRet = readAndParse(infile, lLine, &lLabel, &lOpcode, &lArg1, &lArg2, &lArg3, &lArg4);
 
 		if( lRet != DONE && lRet != EMPTY_LINE ){
 /*
-printf("parsed: %d\n", lRet);
-printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);
-*/
+printf("parse code#: %d\n", lRet);
+printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);*/
 		    /*fprintf(outfile, "0x%.4X\n", 128 );*/
+
+      /*find starting address*/
+      if(!strcmp(lOpcode, ".orig")){
+        init_addr = toNum(lArg1);
+        PC = init_addr - 2;         /*increments when reading .orig line so -2 to correct*/
+/*printf("INITIAL ADDR: %d\n", init_addr);*/
+      }
+
+      /*fill label names and addresses in symbol table*/
       if(isalnum(*lLabel) != 0){
-printf("ENTERED: %s\n", lLabel);
-        /*input address too*/
         strcpy(symbolTable[symbol_counter].label, lLabel);
+        symbolTable[symbol_counter].address = PC;
         symbol_counter++;
       }
+
+      /*increment PC*/
+      PC = PC + 2;
     }
 	} while( lRet != DONE );
 
 /*
-printf("%s\n", symbol_table[0].name);
-printf("%s\n", symbol_table[1].name);
-printf("%s\n", symbol_table[2].name);
+printf("%s, 0x%.4X\n", symbolTable[0].label, symbolTable[0].address);
+printf("%s, 0x%.4X\n", symbolTable[1].label, symbolTable[1].address);
+printf("%s, 0x%.4X\n", symbolTable[2].label, symbolTable[2].address);
+printf("%s, 0x%.4X\n", symbolTable[3].label, symbolTable[3].address);
 */
-
      fclose(infile);
      fclose(outfile);
 
@@ -240,12 +252,11 @@ printf("%s\n", symbol_table[2].name);
 
 int main1(int argc, char const *argv[])
 {
-  char str1[50] = "";
-  char str2[10] = "\0";
-  char str3[10] = "  ";
-  printf("%s\n", str1);
-  printf("%s\n", str2);
-  printf("%s\n", str3);
+  int num = 0;
+  num = num + 0x0002;
+  printf("%d\n", num);
 
+  num = num + 2;
+  printf("%d\n", num);
   return 0;
 }
