@@ -50,6 +50,9 @@ int isOpcode(char* pt){
 	if(strcmp(pt, "stw") == 0){return 1;}
 	if(strcmp(pt, "trap") == 0){return 1;}
 	if(strcmp(pt, "xor") == 0){return 1;}
+  if(strcmp(pt, ".orig") == 0){return 1;}
+  if(strcmp(pt, ".fill") == 0){return 1;}
+  if(strcmp(pt, ".end") == 0){return 1;}
 	return -1;
 }
 
@@ -174,13 +177,263 @@ int readAndParse(FILE * pInfile, char * pLine, char ** pLabel, char ** pOpcode, 
 
   *pArg4 = lPtr;
   return( OK );
+} /* Note: MAX_LINE_LENGTH, OK, EMPTY_LINE, and DONE are defined values */
+
+/*ERROR CHECKER HELPER FUNCTIONS*/
+int containsNonAlnum(char* str){
+  int i;
+  for(i = 0; i < strlen(str); i++){
+    if(isalnum(str[i]) == 0){
+      return 1;
+    }
+  }
+  return 0;
 }
 
-    /* Note: MAX_LINE_LENGTH, OK, EMPTY_LINE, and DONE are defined values */
+int isValidRegister(char* str){
+  if(str[0] != 'r'){exit(4);} 
+  if(!(str[1] >= '0' && str[1] <= '7')){exit(4);} /*between 0 and 7 (inclusive)*/
+  if(str[2] != '\0'){exit(4);}
+}
+
+int isimm5(char* str){
+  int num;
+  if(str[0] == '#' || str[0] == 'x'){
+    num = toNum(str);
+    if(num < -16 || num > 15){
+      printf("INVALID CONSTANT\n");
+      exit(3);
+    }
+    return 1;
+  }
+  else{return 0;}
+}
+
+int isimm4(char* str){
+  int num;
+  if(str[0] == '#' || str[0] == 'x'){
+    num = toNum(str);
+    if(num < 0 || num > 15){
+      printf("INVALID CONSTANT\n");
+      exit(3);
+    }
+    return 1;
+  }
+  else{return 0;}
+}
+
+/*Opcode Functions*/
+
+void add(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
+  int code = 0x1000;
+  if(!strcmp(lOpcode, "add")){                          /*check opcode name*/
+    isValidRegister(lArg1);                             /*append 1st register*/
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);                             /*append 2nd register*/
+    code += atoi(&lArg2[1]) * 64;
+    if(isimm5(lArg3)){                                  /*check if imm5 or register*/
+      if(toNum(lArg3) >= 0){code += 32 + toNum(lArg3);} /*check if imm5 val is positive or negative and append accordingly*/
+      else{
+        code += 32 + 32 + toNum(lArg3);}
+    } else{
+      isValidRegister(lArg3);                           /*if not imm5 append 3rd register*/
+      code += atoi(&lArg3[1]);
+    }
+    fprintf(outfile, "0x%.4X\n", code);                 /*output hexcode to file*/
+  }
+}
+
+void and(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
+  int code = 0x5000;
+  if(!strcmp(lOpcode, "and")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);
+    code += atoi(&lArg2[1]) * 64;
+    if(isimm5(lArg3)){
+      if(toNum(lArg3) >= 0){code += 32 + toNum(lArg3);}
+      else{
+        code += 32 + 32 + toNum(lArg3);}
+    } else{
+      isValidRegister(lArg3);
+      code += atoi(&lArg3[1]);
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void xor(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
+  int code = 0x9000;
+  if(!strcmp(lOpcode, "xor")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);
+    code += atoi(&lArg2[1]) * 64;
+    if(isimm5(lArg3)){
+      if(toNum(lArg3) >= 0){code += 32 + toNum(lArg3);}
+      else{
+        code += 32 + 32 + toNum(lArg3);
+      }
+    } else{
+      isValidRegister(lArg3);
+      code += atoi(&lArg3[1]);
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void nop(char* lOpcode){
+  int code = 0x0000;
+  if(!strcmp(lOpcode, "nop")){
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void not(char* lOpcode, char* lArg1, char* lArg2){
+  int code = 0x903F;
+  if(!strcmp(lOpcode, "not")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);
+    code += atoi(&lArg2[1]) * 64;
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void lshf(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
+  int code = 0xD000;
+  if(!strcmp(lOpcode, "lshf")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);
+    code += atoi(&lArg2[1]) * 64;
+    if(isimm4(lArg3)){
+      code += toNum(lArg3);
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void rshfl(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
+  int code = 0xD000;
+  if(!strcmp(lOpcode, "rshfl")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);
+    code += atoi(&lArg2[1]) * 64;
+    if(isimm4(lArg3)){
+      code += 16 + toNum(lArg3);
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void rshfa(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
+  int code = 0xD000;
+  if(!strcmp(lOpcode, "rshfa")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);
+    code += atoi(&lArg2[1]) * 64;
+    if(isimm4(lArg3)){
+      code += 32 + 16 + toNum(lArg3);
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void trap(char* lOpcode, char* lArg1){                      /*??Trap vector should be hex number??*/
+  int code = 0xF000;
+  int num;
+  if(!strcmp(lOpcode, "trap")){
+    num = toNum(lArg1);
+    if(num < 0 || num > 255){
+      printf("INVALID CONSTANT\n");
+      exit(3);
+    } else{
+      code += num;
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void halt(char* lOpcode){         /*HALT equivalent to TRAP x25*/
+  int code = 0xF025;
+  if(!strcmp(lOpcode, "halt")){
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void jmp(char* lOpcode, char* lArg1){
+  int code = 0xC000;
+  if(!strcmp(lOpcode, "jmp")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 64;
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void ret(char* lOpcode){
+  int code = 0xC1C0;
+  if(!strcmp(lOpcode, "ret")){
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void rti(char* lOpcode){
+  int code = 0x8000;
+  if(!strcmp(lOpcode, "rti")){
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void jsrr(char* lOpcode, char* lArg1){
+  int code = 0x4000;
+  if(!strcmp(lOpcode, "jmp")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 64;
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+void br(char* lOpcode, char* lArg1){
+  int code = 0x0000;
+
+  if((!strcmp(lOpcode, "br")) || (!strcmp(lOpcode, "brnzp"))){
+    code += 2048 + 1024 + 512;
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+  if(!strcmp(lOpcode, "brn")){
+    code += 2048;
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+  if(!strcmp(lOpcode, "brz")){
+    code += 1024;
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+  if(!strcmp(lOpcode, "brp")){
+    code += 512;
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+  if(!strcmp(lOpcode, "brnz")){
+    code += 2048 + 1024;
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+  if(!strcmp(lOpcode, "brnp")){
+    code += 2048 + 512;
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+  if(!strcmp(lOpcode, "brzp")){
+    code += 1024 + 512;
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+
+}
 
 int main(int argc, char* argv[]) {
 
-	/* open the source file */
+/*******************************OPEN FILES********************************/
+printf("OPENING FILES...\n");
   infile = fopen(argv[1], "r");
   outfile = fopen(argv[2], "w");
      
@@ -193,10 +446,11 @@ int main(int argc, char* argv[]) {
    exit(4);
   }
 
-     /* Do stuff with files */
-	char lLine[MAX_LINE_LENGTH + 1], *lLabel, *lOpcode, *lArg1, *lArg2, *lArg3, *lArg4;
+/*******************************FIRST PASS********************************/
+printf("ENTERING FIRST PASS...\n");
+  char lLine[MAX_LINE_LENGTH + 1], *lLabel, *lOpcode, *lArg1, *lArg2, *lArg3, *lArg4;
 	int lRet;
-  int symbol_counter = 0;
+  int symbol_counter = 0, errCounter = 0;
   int init_addr;
   int PC;
 
@@ -207,17 +461,25 @@ int main(int argc, char* argv[]) {
 /*
 printf("parse code#: %d\n", lRet);
 printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);*/
+/*printf("INITIAL ADDR: %d\n", init_addr);*/
 		    /*fprintf(outfile, "0x%.4X\n", 128 );*/
 
       /*find starting address*/
       if(!strcmp(lOpcode, ".orig")){
         init_addr = toNum(lArg1);
+        /*ERROR: check if orig mem is odd*/
+        if(init_addr % 2 == 1){printf("STARTING MEM ODD\n");exit(3);}
         PC = init_addr - 2;         /*increments when reading .orig line so -2 to correct*/
-/*printf("INITIAL ADDR: %d\n", init_addr);*/
       }
 
       /*fill label names and addresses in symbol table*/
       if(isalnum(*lLabel) != 0){
+        /*ERROR: check if label already exists*/
+        for(errCounter = 0; errCounter < symbol_counter; errCounter++){
+          if(!strcmp(lLabel, symbolTable[errCounter].label)){
+            exit(4);
+          }
+        }
         strcpy(symbolTable[symbol_counter].label, lLabel);
         symbolTable[symbol_counter].address = PC;
         symbol_counter++;
@@ -228,12 +490,61 @@ printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);*/
     }
 	} while( lRet != DONE );
 
+/*ERROR: check for invalid label*/
+  for(errCounter = 0; errCounter < symbol_counter; errCounter++){
+    if(isdigit(symbolTable[errCounter].label[0]) || symbolTable[errCounter].label[0] =='x'){
+printf("ERROR BEGINS WITH 'x' OR NUMBER\n");
+      exit(4);
+    }
+    if(containsNonAlnum(symbolTable[errCounter].label)){
+printf("ERROR CONTAINS NON-ALPHANUMERIC CHARACTER\n");
+      exit(4);
+    }
+    if(strcmp(symbolTable[errCounter].label, "in") == 0){exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "out") == 0){exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "getc") == 0){exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "puts") == 0){exit(4);}
+  }
+
 /*
 printf("%s, 0x%.4X\n", symbolTable[0].label, symbolTable[0].address);
 printf("%s, 0x%.4X\n", symbolTable[1].label, symbolTable[1].address);
 printf("%s, 0x%.4X\n", symbolTable[2].label, symbolTable[2].address);
 printf("%s, 0x%.4X\n", symbolTable[3].label, symbolTable[3].address);
 */
+
+/*******************************SECOND PASS********************************/
+printf("ENTERING SECOND PASS...\n");
+rewind(infile);
+
+do{
+  lRet = readAndParse(infile, lLine, &lLabel, &lOpcode, &lArg1, &lArg2, &lArg3, &lArg4);
+
+    if( lRet != DONE && lRet != EMPTY_LINE ){
+/*printf("%s\n", lOpcode);*/
+      /*ERROR: check valid opcode*/
+      if(isOpcode(lOpcode) == -1){printf("INVALID OPCODE\n");exit(2);}
+      
+      add(lOpcode, lArg1, lArg2, lArg3);
+      and(lOpcode, lArg1, lArg2, lArg3);
+      xor(lOpcode, lArg1, lArg2, lArg3);
+      not(lOpcode, lArg1, lArg2);
+      nop(lOpcode);
+      lshf(lOpcode, lArg1, lArg2, lArg3);
+      rshfl(lOpcode, lArg1, lArg2, lArg3);
+      rshfa(lOpcode, lArg1, lArg2, lArg3);
+      trap(lOpcode, lArg1);
+      halt(lOpcode);
+      jmp(lOpcode, lArg1);
+      ret(lOpcode);
+      rti(lOpcode);
+      jsrr(lOpcode, lArg1);
+    }
+  } while( lRet != DONE );
+
+
+/*******************************FINISHING********************************/
+printf("CLOSING FILES...\n");
      fclose(infile);
      fclose(outfile);
 
@@ -248,15 +559,4 @@ printf("%s, 0x%.4X\n", symbolTable[3].label, symbolTable[3].address);
      printf("program name = '%s'\n", prgName);
      printf("input file name = '%s'\n", iFileName);
      printf("output file name = '%s'\n", oFileName);
-}
-
-int main1(int argc, char const *argv[])
-{
-  int num = 0;
-  num = num + 0x0002;
-  printf("%d\n", num);
-
-  num = num + 2;
-  printf("%d\n", num);
-  return 0;
 }
