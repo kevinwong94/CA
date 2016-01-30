@@ -5,16 +5,18 @@
 #include <limits.h>    /* Library for definitions of common variable type characteristics */
 
 #define MAX_LINE_LENGTH 255
+#define MAX_LABEL_LEN 20
+#define MAX_SYMBOLS 255
 
 enum {DONE, OK, EMPTY_LINE};
 FILE* infile = NULL;
 FILE* outfile = NULL;
 
-typedef struct Symbol{
-	char* name;
-	int memAddr;
-} Symbol;
-
+typedef struct {
+    int address;
+    char label[MAX_LABEL_LEN + 1];    /* Question for the reader: Why do we need to add 1? */
+} TableEntry;
+TableEntry symbolTable[MAX_SYMBOLS];
 
 /*determines whether a string of characters is a valid opcode*/
 /* ADD, AND, BR (all 8 variations), HALT, JMP, JSR, JSRR, LDB, LDW, 
@@ -192,35 +194,23 @@ int main(int argc, char* argv[]) {
   }
 
      /* Do stuff with files */
-  struct Symbol symbol_table[10000];
-  int i;
-  for(i = 0; i < 10000; i++){
-    symbol_table[i].name = NULL;
-    symbol_table[i].memAddr = -1;
-  }
-  int symbol_counter = 0;
-  /*
-    Figure out how to manipulate array of structs, implement symbol table
-  */
 	char lLine[MAX_LINE_LENGTH + 1], *lLabel, *lOpcode, *lArg1, *lArg2, *lArg3, *lArg4;
 	int lRet;
+  int symbol_counter = 0;
 
 	do{
 		lRet = readAndParse(infile, lLine, &lLabel, &lOpcode, &lArg1, &lArg2, &lArg3, &lArg4);
 
 		if( lRet != DONE && lRet != EMPTY_LINE ){
-
 /*
 printf("parsed: %d\n", lRet);
 printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);
 */
-printf("OUTSIDE: %s\n", lLabel);
 		    /*fprintf(outfile, "0x%.4X\n", 128 );*/
-      if(lLabel != NULL || *lLabel != '\n' || lLabel != "\0"){
+      if(isalnum(*lLabel) != 0){
 printf("ENTERED: %s\n", lLabel);
-fprintf(outfile, "%c\n", *lLabel);
-        symbol_table[symbol_counter].name = (char*)malloc(strlen(lLabel) * sizeof(char));
-        strcpy(symbol_table[symbol_counter].name, lLabel);
+        /*input address too*/
+        strcpy(symbolTable[symbol_counter].label, lLabel);
         symbol_counter++;
       }
     }
