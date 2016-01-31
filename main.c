@@ -227,8 +227,7 @@ int isimm5(char* str){
     return 1;
   }
   else{
-    printf("INVALID ARGUMENT\n");
-    exit(3);
+    return 0;
   }
 }
 
@@ -827,6 +826,7 @@ do{
       orig(lOpcode, lArg1);
       halt(lOpcode);
       fill(lOpcode, lArg1);
+
       if(end(lOpcode)){
         break;
       }
