@@ -839,13 +839,7 @@ printf("ENTERING FIRST PASS...\n");
     if(strcmp(symbolTable[errCounter].label, "puts") == 0){printf("INVALID LABEL\n");exit(4);}
   }
 
-printSymbolTable(symbolTable, symbol_counter);
-/*
-printf("%s, 0x%.4X\n", symbolTable[0].label, symbolTable[0].address);
-printf("%s, 0x%.4X\n", symbolTable[1].label, symbolTable[1].address);
-printf("%s, 0x%.4X\n", symbolTable[2].label, symbolTable[2].address);
-printf("%s, 0x%.4X\n", symbolTable[3].label, symbolTable[3].address);
-*/
+/*printSymbolTable(symbolTable, symbol_counter);*/
 
 /*******************************SECOND PASS********************************/
 printf("ENTERING SECOND PASS...\n");
@@ -914,4 +908,9 @@ printf("CLOSING FILES...\n");
      printf("program name = '%s'\n", prgName);
      printf("input file name = '%s'\n", iFileName);
      printf("output file name = '%s'\n", oFileName);
+
+printf("EXITING...\n");
+     exit(0);
 }
+
+
