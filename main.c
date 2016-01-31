@@ -16,7 +16,11 @@ typedef struct {
     int address;
     char label[MAX_LABEL_LEN + 1];    /* Question for the reader: Why do we need to add 1? */
 } TableEntry;
+
+int symbol_counter = 0;
 TableEntry symbolTable[MAX_SYMBOLS];
+
+int init_addr;
 
 /*determines whether a string of characters is a valid opcode*/
 /* ADD, AND, BR (all 8 variations), HALT, JMP, JSR, JSRR, LDB, LDW, 
@@ -196,6 +200,22 @@ int isValidRegister(char* str){
   if(str[2] != '\0'){exit(4);}
 }
 
+int isimm6(char* str){
+  int num;
+  if(str[0] == '#' || str[0] == 'x'){
+    num = toNum(str);
+    if(num < -32 || num > 31){
+      printf("INVALID CONSTANT\n");
+      exit(3);
+    }
+    return 1;
+  }
+  else{
+    printf("INVALID ARGUMENT\n");
+    exit(3);
+  }
+}
+
 int isimm5(char* str){
   int num;
   if(str[0] == '#' || str[0] == 'x'){
@@ -206,10 +226,13 @@ int isimm5(char* str){
     }
     return 1;
   }
-  else{return 0;}
+  else{
+    printf("INVALID ARGUMENT\n");
+    exit(3);
+  }
 }
 
-int isimm4(char* str){
+int isamount4(char* str){
   int num;
   if(str[0] == '#' || str[0] == 'x'){
     num = toNum(str);
@@ -219,10 +242,65 @@ int isimm4(char* str){
     }
     return 1;
   }
-  else{return 0;}
+  else{
+    printf("INVALID ARGUMENT\n");
+    exit(3);
+  }
+}
+
+int labelExists(char* str){
+  int i;
+/*printf("str: %s\n", str);*/
+  for(i = 0; i < symbol_counter; i++){
+/*printf("current label: %s\n", symbolTable[i].label);*/
+    if(!strcmp(str, symbolTable[i].label)){
+      return i;
+    }
+  }
+  /*label does not exist*/
+/*printf("i: %d, symbol_counter: %d\n", i, symbol_counter);*/
+  if(i == symbol_counter){
+    printf("UNDEFINED LABEL\n");
+    exit(1);
+  }
+}
+
+int isInRange(int offset, int range){
+  int upperBound = range -1;
+  int lowerBound = range * -1;
+  if(offset < lowerBound || offset > upperBound){
+    printf("OUT OF RANGE\n");
+    exit(4);
+  }
 }
 
 /*Opcode Functions*/
+
+/*TODO: check valid memory address*/
+void orig(char* lOpcode, char* lArg1){
+  int code;
+  if(!strcmp(lOpcode, ".orig")){
+    code = toNum(lArg1);
+    fprintf(outfile, "0x%.4X\n", code);
+  } 
+}
+
+/*TODO: test fill*/
+void fill(char* lOpcode, char* lArg1){
+  int code;
+  if(!strcmp(lOpcode, ".fill")){
+    code = toNum(lArg1);
+    if(code > 0xFFFF){printf("INVALID CONSTANT\n");exit(3);}
+    fprintf(outfile, "0x%.4X\n", code);
+  } 
+}
+
+int end(char* lOpcode){
+  if(!strcmp(lOpcode, ".end")){
+    return 1;
+  }
+  return 0;
+}
 
 void add(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
   int code = 0x1000;
@@ -234,7 +312,7 @@ void add(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
     if(isimm5(lArg3)){                                  /*check if imm5 or register*/
       if(toNum(lArg3) >= 0){code += 32 + toNum(lArg3);} /*check if imm5 val is positive or negative and append accordingly*/
       else{
-        code += 32 + 32 + toNum(lArg3);}
+        code += 32 + 32 + toNum(lArg3);}                /*+32 : 5-bit two's complement conversion*/
     } else{
       isValidRegister(lArg3);                           /*if not imm5 append 3rd register*/
       code += atoi(&lArg3[1]);
@@ -307,7 +385,7 @@ void lshf(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
     code += atoi(&lArg1[1]) * 512;
     isValidRegister(lArg2);
     code += atoi(&lArg2[1]) * 64;
-    if(isimm4(lArg3)){
+    if(isamount4(lArg3)){
       code += toNum(lArg3);
     }
     fprintf(outfile, "0x%.4X\n", code);
@@ -321,7 +399,7 @@ void rshfl(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
     code += atoi(&lArg1[1]) * 512;
     isValidRegister(lArg2);
     code += atoi(&lArg2[1]) * 64;
-    if(isimm4(lArg3)){
+    if(isamount4(lArg3)){
       code += 16 + toNum(lArg3);
     }
     fprintf(outfile, "0x%.4X\n", code);
@@ -335,17 +413,102 @@ void rshfa(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
     code += atoi(&lArg1[1]) * 512;
     isValidRegister(lArg2);
     code += atoi(&lArg2[1]) * 64;
-    if(isimm4(lArg3)){
+    if(isamount4(lArg3)){
       code += 32 + 16 + toNum(lArg3);
     }
     fprintf(outfile, "0x%.4X\n", code);
   }
 }
 
-void trap(char* lOpcode, char* lArg1){                      /*??Trap vector should be hex number??*/
+/*TODO: test ldb*/
+void ldb(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
+  int code = 0x2000;
+  if(!strcmp(lOpcode, "ldb")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);
+    code += atoi(&lArg2[1]) * 64;
+    if(isimm6(lArg3)){
+      if(toNum(lArg3) >= 0){
+        code += toNum(lArg3);
+      }
+      else{
+        code += 64 + toNum(lArg3);
+      }
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+/*TODO: test ldw*/
+void ldw(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
+  int code = 0x6000;
+  int offset;
+  if(!strcmp(lOpcode, "ldw")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);
+    code += atoi(&lArg2[1]) * 64;
+    if(isimm6(lArg3)){
+      if(toNum(lArg3) >= 0){
+        code += toNum(lArg3);
+      }
+      else{
+        code += 64 + toNum(lArg3);
+      }
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+/*TODO: test STB*/
+void stb(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
+  int code = 0x3000;
+  int offset;
+  if(!strcmp(lOpcode, "stb")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);
+    code += atoi(&lArg2[1]) * 64;
+    if(isimm6(lArg3)){
+      if(toNum(lArg3) >= 0){
+        code += toNum(lArg3);
+      }
+      else{
+        code += 64 + toNum(lArg3);
+      }
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+/*TODO: test STW*/
+void stw(char* lOpcode, char* lArg1, char* lArg2, char* lArg3){
+  int code = 0x7000;
+  int offset;
+  if(!strcmp(lOpcode, "stw")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    isValidRegister(lArg2);
+    code += atoi(&lArg2[1]) * 64;
+    if(isimm6(lArg3)){
+      if(toNum(lArg3) >= 0){
+        code += toNum(lArg3);
+      }
+      else{
+        code += 64 + toNum(lArg3);
+      }
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+/*test trap*/
+void trap(char* lOpcode, char* lArg1){                      
   int code = 0xF000;
   int num;
   if(!strcmp(lOpcode, "trap")){
+    if(lArg1[0] != 'x'){printf("INVALID CONSTANT");exit(3);}
     num = toNum(lArg1);
     if(num < 0 || num > 255){
       printf("INVALID CONSTANT\n");
@@ -387,47 +550,159 @@ void rti(char* lOpcode){
   }
 }
 
+/*TODO: test jsr*/
+void jsr(char* lOpcode, char* lArg1, int PC){
+  int code = 0x4000;
+  int label_index;
+  int PCmod = PC + 2;
+  int offset;
+
+  if(!strcmp(lOpcode, "jsr")){
+    code += 0x0800;                                                
+    label_index = labelExists(lArg1);
+    offset = (symbolTable[label_index].address - PCmod)/2;
+    /*check in range*/
+    isInRange(offset, 1024);
+    if(offset >= 0){
+      code += offset;
+    } else{
+      code += offset + 0x0800;    /*11-bit two's complement conversion*/
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+/*TODO: test jsrr*/
 void jsrr(char* lOpcode, char* lArg1){
   int code = 0x4000;
-  if(!strcmp(lOpcode, "jmp")){
+  if(!strcmp(lOpcode, "jsrr")){
     isValidRegister(lArg1);
     code += atoi(&lArg1[1]) * 64;
     fprintf(outfile, "0x%.4X\n", code);
   }
 }
 
-void br(char* lOpcode, char* lArg1){
+/*TODO: test LEA*/
+void lea(char* lOpcode, char* lArg1, char* lArg2, int PC){
+  int code = 0xE000;
+  int label_index;
+  int PCmod = PC + 2;
+  int offset;
+
+  if(!strcmp(lOpcode, "lea")){
+    isValidRegister(lArg1);
+    code += atoi(&lArg1[1]) * 512;
+    label_index = labelExists(lArg2);
+    offset = (symbolTable[label_index].address - PCmod)/2;
+    isInRange(offset, 256);
+    if(offset >= 0){
+      code += offset;
+    } else{
+      code += offset + 0x0200;    /*0x0200 : 9-bit two's complement conversion*/
+    }
+    fprintf(outfile, "0x%.4X\n", code);
+  }
+}
+
+/*TODO: test statements*/
+void br(char* lOpcode, char* lArg1, int PC){
   int code = 0x0000;
+  int label_index;
+  int PCmod = PC + 2;
+  int offset;
 
   if((!strcmp(lOpcode, "br")) || (!strcmp(lOpcode, "brnzp"))){
-    code += 2048 + 1024 + 512;
+    code += 0x0E00;                                                 /*set nzp*/
+    label_index = labelExists(lArg1);
+/*printf("%x | %x\n", PCmod, symbolTable[label_index].address);*/
+    offset = (symbolTable[label_index].address - PCmod)/2;
+    /*check in range*/
+    isInRange(offset, 256);
+    if(offset >= 0){
+      code += offset;
+    } else{
+      code += offset + 0x0200;    /*0x0200 : 9-bit two's complement conversion*/
+    }
     fprintf(outfile, "0x%.4X\n", code);
   }
   if(!strcmp(lOpcode, "brn")){
     code += 2048;
+    label_index = labelExists(lArg1);
+    offset = (symbolTable[label_index].address - PCmod)/2;
+    /*check in range*/
+    isInRange(offset, 256);
+    if(offset >= 0){
+      code += offset;
+    } else{
+      code += offset + 0x0200;    /*0x0200 : 9-bit two's complement conversion*/
+    }
     fprintf(outfile, "0x%.4X\n", code);
   }
   if(!strcmp(lOpcode, "brz")){
     code += 1024;
+    label_index = labelExists(lArg1);
+    offset = (symbolTable[label_index].address - PCmod)/2;
+    /*check in range*/
+    isInRange(offset, 256);
+    if(offset >= 0){
+      code += offset;
+    } else{
+      code += offset + 0x0200;    /*0x0200 : 9-bit two's complement conversion*/
+    }
     fprintf(outfile, "0x%.4X\n", code);
   }
   if(!strcmp(lOpcode, "brp")){
     code += 512;
+    label_index = labelExists(lArg1);
+    offset = (symbolTable[label_index].address - PCmod)/2;
+    /*check in range*/
+    isInRange(offset, 256);
+    if(offset >= 0){
+      code += offset;
+    } else{
+      code += offset + 0x0200;    /*0x0200 : 9-bit two's complement conversion*/
+    }
     fprintf(outfile, "0x%.4X\n", code);
   }
   if(!strcmp(lOpcode, "brnz")){
     code += 2048 + 1024;
+    label_index = labelExists(lArg1);
+    offset = (symbolTable[label_index].address - PCmod)/2;
+    /*check in range*/
+    isInRange(offset, 256);
+    if(offset >= 0){
+      code += offset;
+    } else{
+      code += offset + 0x0200;    /*0x0200 : 9-bit two's complement conversion*/
+    }
     fprintf(outfile, "0x%.4X\n", code);
   }
   if(!strcmp(lOpcode, "brnp")){
     code += 2048 + 512;
+    label_index = labelExists(lArg1);
+    offset = (symbolTable[label_index].address - PCmod)/2;
+    /*check in range*/
+    isInRange(offset, 256);
+    if(offset >= 0){
+      code += offset;
+    } else{
+      code += offset + 0x0200;    /*0x0200 : 9-bit two's complement conversion*/
+    }
     fprintf(outfile, "0x%.4X\n", code);
   }
   if(!strcmp(lOpcode, "brzp")){
     code += 1024 + 512;
+    label_index = labelExists(lArg1);
+    offset = (symbolTable[label_index].address - PCmod)/2;
+    /*check in range*/
+    isInRange(offset, 256);
+    if(offset >= 0){
+      code += offset;
+    } else{
+      code += offset + 0x0200;    /*0x0200 : 9-bit two's complement conversion*/
+    }
     fprintf(outfile, "0x%.4X\n", code);
   }
-
 }
 
 int main(int argc, char* argv[]) {
@@ -450,8 +725,7 @@ printf("OPENING FILES...\n");
 printf("ENTERING FIRST PASS...\n");
   char lLine[MAX_LINE_LENGTH + 1], *lLabel, *lOpcode, *lArg1, *lArg2, *lArg3, *lArg4;
 	int lRet;
-  int symbol_counter = 0, errCounter = 0;
-  int init_addr;
+  int errCounter = 0;
   int PC;
 
 	do{
@@ -493,11 +767,11 @@ printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);*/
 /*ERROR: check for invalid label*/
   for(errCounter = 0; errCounter < symbol_counter; errCounter++){
     if(isdigit(symbolTable[errCounter].label[0]) || symbolTable[errCounter].label[0] =='x'){
-printf("ERROR BEGINS WITH 'x' OR NUMBER\n");
+      printf("ERROR BEGINS WITH 'x' OR NUMBER\n");
       exit(4);
     }
     if(containsNonAlnum(symbolTable[errCounter].label)){
-printf("ERROR CONTAINS NON-ALPHANUMERIC CHARACTER\n");
+      printf("ERROR CONTAINS NON-ALPHANUMERIC CHARACTER\n");
       exit(4);
     }
     if(strcmp(symbolTable[errCounter].label, "in") == 0){exit(4);}
@@ -517,28 +791,48 @@ printf("%s, 0x%.4X\n", symbolTable[3].label, symbolTable[3].address);
 printf("ENTERING SECOND PASS...\n");
 rewind(infile);
 
+PC = init_addr - 2; /*correction for counting orig*/
+
 do{
   lRet = readAndParse(infile, lLine, &lLabel, &lOpcode, &lArg1, &lArg2, &lArg3, &lArg4);
 
     if( lRet != DONE && lRet != EMPTY_LINE ){
-/*printf("%s\n", lOpcode);*/
+/*printf("%x: %s\n", PC, lOpcode);
       /*ERROR: check valid opcode*/
       if(isOpcode(lOpcode) == -1){printf("INVALID OPCODE\n");exit(2);}
-      
+
+      /*ops*/
       add(lOpcode, lArg1, lArg2, lArg3);
       and(lOpcode, lArg1, lArg2, lArg3);
-      xor(lOpcode, lArg1, lArg2, lArg3);
+      br(lOpcode, lArg1, PC);
+      jmp(lOpcode, lArg1);
+      jsr(lOpcode, lArg1, PC);
+      jsrr(lOpcode, lArg1);
+      ldb(lOpcode, lArg1, lArg2, lArg3);
+      ldw(lOpcode, lArg1, lArg2, lArg3);
+      lea(lOpcode, lArg1, lArg2, PC);
       not(lOpcode, lArg1, lArg2);
       nop(lOpcode);
+      ret(lOpcode);
+      rti(lOpcode);
       lshf(lOpcode, lArg1, lArg2, lArg3);
       rshfl(lOpcode, lArg1, lArg2, lArg3);
       rshfa(lOpcode, lArg1, lArg2, lArg3);
+      stb(lOpcode, lArg1, lArg2, lArg3);
+      stw(lOpcode, lArg1, lArg2, lArg3);     
       trap(lOpcode, lArg1);
+      xor(lOpcode, lArg1, lArg2, lArg3);
+      
+      /*pseudo-ops*/
+      orig(lOpcode, lArg1);
       halt(lOpcode);
-      jmp(lOpcode, lArg1);
-      ret(lOpcode);
-      rti(lOpcode);
-      jsrr(lOpcode, lArg1);
+      fill(lOpcode, lArg1);
+      if(end(lOpcode)){
+        break;
+      }
+
+      /*increment PC*/
+      PC = PC + 2;
     }
   } while( lRet != DONE );
 
