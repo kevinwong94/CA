@@ -183,6 +183,14 @@ int readAndParse(FILE * pInfile, char * pLine, char ** pLabel, char ** pOpcode, 
   return( OK );
 } /* Note: MAX_LINE_LENGTH, OK, EMPTY_LINE, and DONE are defined values */
 
+/*DEBUG FUNCTIONS*/
+void printSymbolTable(TableEntry* symbolTable, int size){
+  int i;
+  for(i = 0; i < size; i++){
+    printf("%s: %x\n", symbolTable[i].label, symbolTable[i].address);
+  }
+}
+
 /*ERROR CHECKER HELPER FUNCTIONS*/
 int containsNonAlnum(char* str){
   int i;
@@ -195,9 +203,9 @@ int containsNonAlnum(char* str){
 }
 
 int isValidRegister(char* str){
-  if(str[0] != 'r'){exit(4);} 
-  if(!(str[1] >= '0' && str[1] <= '7')){exit(4);} /*between 0 and 7 (inclusive)*/
-  if(str[2] != '\0'){exit(4);}
+  if(str[0] != 'r'){printf("INVALID ARGUMENT\n");exit(4);} 
+  if(!(str[1] >= '0' && str[1] <= '7')){printf("INVALID REGISTER\n");exit(4);} /*between 0 and 7 (inclusive)*/
+  if(str[2] != '\0'){printf("INVALID REGISTER\n");exit(4);}
 }
 
 int isimm6(char* str){
@@ -289,7 +297,6 @@ int isValidNumArg(int num, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
 
 /*Opcode Functions*/
 
-/*TODO: check valid memory address*/
 void orig(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   int code;
   if(!strcmp(lOpcode, ".orig")){
@@ -777,9 +784,13 @@ printf("ENTERING FIRST PASS...\n");
 		if( lRet != DONE && lRet != EMPTY_LINE ){
 
 /*printf("parse code#: %d\n", lRet);*/
-printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);
+/*printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);*/
 /*printf("INITIAL ADDR: %d\n", init_addr);*/
 		    /*fprintf(outfile, "0x%.4X\n", 128 );*/
+
+      if(end(lOpcode, lArg1, lArg2, lArg3, lArg4)){
+        break;
+      }
 
       /*find starting address*/
       if(!strcmp(lOpcode, ".orig")){
@@ -796,6 +807,7 @@ printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);
         /*ERROR: check if label already exists*/
         for(errCounter = 0; errCounter < symbol_counter; errCounter++){
           if(!strcmp(lLabel, symbolTable[errCounter].label)){
+            printf("LABEL ALREADY EXISTS\n");
             exit(4);
           }
         }
@@ -821,12 +833,13 @@ printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);
       printf("ERROR CONTAINS NON-ALPHANUMERIC CHARACTER\n");
       exit(4);
     }
-    if(strcmp(symbolTable[errCounter].label, "in") == 0){exit(4);}
-    if(strcmp(symbolTable[errCounter].label, "out") == 0){exit(4);}
-    if(strcmp(symbolTable[errCounter].label, "getc") == 0){exit(4);}
-    if(strcmp(symbolTable[errCounter].label, "puts") == 0){exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "in") == 0){printf("INVALID LABEL\n");exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "out") == 0){printf("INVALID LABEL\n");exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "getc") == 0){printf("INVALID LABEL\n");exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "puts") == 0){printf("INVALID LABEL\n");exit(4);}
   }
 
+printSymbolTable(symbolTable, symbol_counter);
 /*
 printf("%s, 0x%.4X\n", symbolTable[0].label, symbolTable[0].address);
 printf("%s, 0x%.4X\n", symbolTable[1].label, symbolTable[1].address);
