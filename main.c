@@ -267,7 +267,7 @@ int labelExists(char* str){
   /*label does not exist*/
 /*printf("i: %d, symbol_counter: %d\n", i, symbol_counter);*/
   if(i == symbol_counter){
-    printf("UNDEFINED LABEL\n");
+    printf("UNDEFINED LABEL: %s\n", str);
     exit(1);
   }
 }
@@ -312,12 +312,16 @@ void fill(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   if(!strcmp(lOpcode, ".fill")){
     isValidNumArg(1, lArg1, lArg2, lArg3, lArg4);
     code = toNum(lArg1);
-    if(code > 0xFFFF){printf("INVALID CONSTANT\n");exit(3);}
+    if(code >= 0){
+      if(code > 0x7FFF){printf("INVALID CONSTANT: .FILL TOO BIG\n");exit(3);}
+    } else{
+      if(code < -32768){printf("INVALID CONSTANT: .FILL TOO SMALL\n");exit(3);}
+    }
+    code = (unsigned short)code;
     fprintf(outfile, "0x%.4X\n", code);
   } 
 }
 
-/*TODO: arg after end?*/
 int end(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   if(!strcmp(lOpcode, ".end")){
     return 1;
@@ -785,8 +789,8 @@ printf("ENTERING FIRST PASS...\n");
 
 /*printf("parse code#: %d\n", lRet);*/
 /*printf("%s %s %s %s %s %s\n", lLabel, lOpcode, lArg1, lArg2, lArg3, lArg4);*/
+
 /*printf("INITIAL ADDR: %d\n", init_addr);*/
-		    /*fprintf(outfile, "0x%.4X\n", 128 );*/
 
       if(end(lOpcode, lArg1, lArg2, lArg3, lArg4)){
         break;
@@ -804,6 +808,7 @@ printf("ENTERING FIRST PASS...\n");
 
       /*fill label names and addresses in symbol table*/
       if(isalnum(*lLabel) != 0){
+/*printf("!!%s\n", lLabel);*/
         /*ERROR: check if label already exists*/
         for(errCounter = 0; errCounter < symbol_counter; errCounter++){
           if(!strcmp(lLabel, symbolTable[errCounter].label)){
@@ -833,10 +838,10 @@ printf("ENTERING FIRST PASS...\n");
       printf("ERROR CONTAINS NON-ALPHANUMERIC CHARACTER\n");
       exit(4);
     }
-    if(strcmp(symbolTable[errCounter].label, "in") == 0){printf("INVALID LABEL\n");exit(4);}
-    if(strcmp(symbolTable[errCounter].label, "out") == 0){printf("INVALID LABEL\n");exit(4);}
-    if(strcmp(symbolTable[errCounter].label, "getc") == 0){printf("INVALID LABEL\n");exit(4);}
-    if(strcmp(symbolTable[errCounter].label, "puts") == 0){printf("INVALID LABEL\n");exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "in") == 0){printf("INVALID LABEL: IN\n");exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "out") == 0){printf("INVALID LABEL: OUT\n");exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "getc") == 0){printf("INVALID LABEL: GETC\n");exit(4);}
+    if(strcmp(symbolTable[errCounter].label, "puts") == 0){printf("INVALID LABEL: PUTS\n");exit(4);}
   }
 
 /*printSymbolTable(symbolTable, symbol_counter);*/
@@ -853,7 +858,7 @@ do{
     if( lRet != DONE && lRet != EMPTY_LINE ){
 /*printf("%x: %s\n", PC, lOpcode);
       /*ERROR: check valid opcode*/
-      if(isOpcode(lOpcode) == -1){printf("INVALID OPCODE\n");exit(2);}
+      if(isOpcode(lOpcode) == -1){printf("INVALID OPCODE: %s\n", lOpcode);exit(2);}
 
       /*ops*/
       add(lOpcode, lArg1, lArg2, lArg3, lArg4);
