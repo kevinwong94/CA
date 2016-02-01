@@ -1,3 +1,10 @@
+/*
+	Name 1: Darren Hui 
+	Name 2: Kevin Wong 
+	UTEID 1: dh23265
+	UTEID 2: kw25779 
+*/
+
 #include <stdio.h>    /* standard input/output library */
 #include <stdlib.h>    /* Standard C Library */
 #include <string.h>    /* String operations library */
