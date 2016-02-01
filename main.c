@@ -306,7 +306,6 @@ void orig(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   } 
 }
 
-/*TODO: test fill*/
 void fill(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   int code;
   if(!strcmp(lOpcode, ".fill")){
@@ -455,7 +454,6 @@ void rshfa(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   }
 }
 
-/*TODO: test ldb*/
 void ldb(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   int code = 0x2000;
   if(!strcmp(lOpcode, "ldb")){
@@ -476,7 +474,6 @@ void ldb(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   }
 }
 
-/*TODO: test ldw*/
 void ldw(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   int code = 0x6000;
   int offset;
@@ -498,7 +495,6 @@ void ldw(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   }
 }
 
-/*TODO: test STB*/
 void stb(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   int code = 0x3000;
   int offset;
@@ -520,7 +516,6 @@ void stb(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   }
 }
 
-/*TODO: test STW*/
 void stw(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   int code = 0x7000;
   int offset;
@@ -542,13 +537,11 @@ void stw(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   }
 }
 
-/*test trap*/
 void trap(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){                     
   int code = 0xF000;
   int num;
   if(!strcmp(lOpcode, "trap")){
     isValidNumArg(1, lArg1, lArg2, lArg3, lArg4);
-    if(lArg1[0] != 'x'){printf("INVALID CONSTANT");exit(3);}
     num = toNum(lArg1);
     if(num < 0 || num > 255){
       printf("INVALID CONSTANT\n");
@@ -594,7 +587,6 @@ void rti(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   }
 }
 
-/*TODO: test jsr*/
 void jsr(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4, int PC){
   int code = 0x4000;
   int label_index;
@@ -617,7 +609,6 @@ void jsr(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4, int 
   }
 }
 
-/*TODO: test jsrr*/
 void jsrr(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   int code = 0x4000;
   if(!strcmp(lOpcode, "jsrr")){
@@ -628,7 +619,6 @@ void jsrr(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4){
   }
 }
 
-/*TODO: test LEA*/
 void lea(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4, int PC){
   int code = 0xE000;
   int label_index;
@@ -651,7 +641,6 @@ void lea(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4, int 
   }
 }
 
-/*TODO: test statements*/
 void br(char* lOpcode, char* lArg1, char* lArg2, char* lArg3, char* lArg4, int PC){
   int code = 0x0000;
   int label_index;
