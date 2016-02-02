@@ -17,8 +17,10 @@
 		LEA R6 SHFMASK
 		LDB R0 R6 #0	;R0 = shuffle mask
 
-		LEA R4 INPUT 	;R4 = input addr
+		LEA R4 INPUT 	;R4 = input addrLD
+		LDW R4 R4 #0
 		LEA R5 OUTPUT	;R5 = output addr
+		LDW R5 R5 #0
 
 		;Byte 0
 		AND R1 R0 x0003	;R1 = byte 0 control
